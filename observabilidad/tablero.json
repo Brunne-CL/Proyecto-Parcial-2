@@ -1,0 +1,103 @@
+{
+  "title": "Operación CI/CD y servidor",
+  "description": "Ejecuciones del pipeline, latencia HTTP y recursos de la instancia.",
+  "tabs": [
+    {
+      "tabId": "operacion",
+      "name": "Operación",
+      "panels": [
+        {
+          "id": "eventos",
+          "type": "table",
+          "title": "Ejecuciones del pipeline",
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp, tipo, estado, commit, rama, usuario, mensaje FROM cicd ORDER BY _timestamp DESC",
+              "customQuery": true
+            }
+          ],
+          "layout": {"x": 0, "y": 0, "w": 12, "h": 8, "i": "eventos"}
+        },
+        {
+          "id": "latencia",
+          "type": "line",
+          "title": "Latencia por endpoint",
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS latencia, \"http.route\" AS ruta FROM \"http_request_duration_seconds\" GROUP BY x, ruta ORDER BY x",
+              "customQuery": true
+            }
+          ],
+          "layout": {"x": 0, "y": 8, "w": 6, "h": 8, "i": "latencia"}
+        },
+        {
+          "id": "peticiones",
+          "type": "line",
+          "title": "Peticiones y errores HTTP",
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS x, sum(value) AS peticiones, \"http.status_code\" AS estado FROM \"http_requests_total\" GROUP BY x, estado ORDER BY x",
+              "customQuery": true
+            }
+          ],
+          "layout": {"x": 6, "y": 8, "w": 6, "h": 8, "i": "peticiones"}
+        },
+        {
+          "id": "cpu",
+          "type": "line",
+          "title": "CPU",
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS cpu FROM \"host_cpu_utilization\" GROUP BY x ORDER BY x",
+              "customQuery": true
+            }
+          ],
+          "layout": {"x": 0, "y": 16, "w": 6, "h": 8, "i": "cpu"}
+        },
+        {
+          "id": "ram",
+          "type": "line",
+          "title": "Memoria RAM",
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS ram FROM \"host_memory_utilization\" GROUP BY x ORDER BY x",
+              "customQuery": true
+            }
+          ],
+          "layout": {"x": 6, "y": 16, "w": 6, "h": 8, "i": "ram"}
+        },
+        {
+          "id": "red",
+          "type": "line",
+          "title": "Ancho de banda",
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS bytes_por_segundo FROM \"host_network_receive_bytes_per_second\" GROUP BY x ORDER BY x",
+              "customQuery": true
+            }
+          ],
+          "layout": {"x": 0, "y": 24, "w": 6, "h": 8, "i": "red"}
+        },
+        {
+          "id": "temperatura",
+          "type": "line",
+          "title": "Temperatura",
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS celsius FROM \"host_temperature_celsius\" GROUP BY x ORDER BY x",
+              "customQuery": true
+            }
+          ],
+          "layout": {"x": 6, "y": 24, "w": 6, "h": 8, "i": "temperatura"}
+        }
+      ]
+    }
+  ]
+}

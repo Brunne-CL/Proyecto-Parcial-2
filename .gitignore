@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+data/
+*.db
+evidencias/servidor.log
+evidencias/usuarios-prueba.db
+evidencias/usuarios-fallo.db
+playwright-report/
+test-results/
+.env

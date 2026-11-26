@@ -1,0 +1,75 @@
+{
+  "fecha": "20 de noviembre de 2026",
+  "lugar": "Querétaro",
+  "duracion_s": 5.19,
+  "exitstatus": 0,
+  "pruebas": [
+    {
+      "nombre": "test_salud_ok",
+      "nodo": "tests/test_api.py::test_salud_ok",
+      "estado": "CORRECTO",
+      "duracion_s": 0.009
+    },
+    {
+      "nombre": "test_login_incorrecto",
+      "nodo": "tests/test_api.py::test_login_incorrecto",
+      "estado": "CORRECTO",
+      "duracion_s": 0.049
+    },
+    {
+      "nombre": "test_sin_sesion_no_lista",
+      "nodo": "tests/test_api.py::test_sin_sesion_no_lista",
+      "estado": "CORRECTO",
+      "duracion_s": 0.003
+    },
+    {
+      "nombre": "test_crud_completo",
+      "nodo": "tests/test_api.py::test_crud_completo",
+      "estado": "CORRECTO",
+      "duracion_s": 0.135
+    },
+    {
+      "nombre": "test_rol_usuario_no_administra",
+      "nodo": "tests/test_api.py::test_rol_usuario_no_administra",
+      "estado": "CORRECTO",
+      "duracion_s": 0.21
+    },
+    {
+      "nombre": "test_validaciones",
+      "nodo": "tests/test_api.py::test_validaciones",
+      "estado": "CORRECTO",
+      "duracion_s": 0.168
+    },
+    {
+      "nombre": "test_no_elimina_al_ultimo_admin",
+      "nodo": "tests/test_api.py::test_no_elimina_al_ultimo_admin",
+      "estado": "CORRECTO",
+      "duracion_s": 0.057
+    },
+    {
+      "nombre": "test_fallo_intencional_en_endpoint_y_pantalla[chromium]",
+      "nodo": "tests/test_fallo.py::test_fallo_intencional_en_endpoint_y_pantalla[chromium]",
+      "estado": "CORRECTO",
+      "duracion_s": 1.367
+    },
+    {
+      "nombre": "test_pantalla_de_acceso[chromium]",
+      "nodo": "tests/test_ui.py::test_pantalla_de_acceso[chromium]",
+      "estado": "CORRECTO",
+      "duracion_s": 0.119
+    },
+    {
+      "nombre": "test_login_invalido[chromium]",
+      "nodo": "tests/test_ui.py::test_login_invalido[chromium]",
+      "estado": "CORRECTO",
+      "duracion_s": 0.206
+    },
+    {
+      "nombre": "test_crud_en_pantalla[chromium]",
+      "nodo": "tests/test_ui.py::test_crud_en_pantalla[chromium]",
+      "estado": "CORRECTO",
+      "duracion_s": 0.803
+    }
+  ],
+  "python": "3.14.5"
+}

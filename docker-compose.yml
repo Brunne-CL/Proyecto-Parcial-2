@@ -1,0 +1,60 @@
+services:
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:latest
+    container_name: gestion-openobserve
+    restart: unless-stopped
+    environment:
+      ZO_ROOT_USER_EMAIL: ${OO_USER:-admin@uteq.edu.mx}
+      ZO_ROOT_USER_PASSWORD: ${OO_PASSWORD:-Gestion2026!}
+      ZO_DATA_DIR: /data
+    ports:
+      - "5080:5080"
+    volumes:
+      - oo-data:/data
+
+  app:
+    build: .
+    container_name: gestion-usuarios
+    restart: unless-stopped
+    depends_on:
+      - openobserve
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://openobserve:5080/api/default
+      OTEL_SERVICE_NAME: gestion-usuarios
+      OO_USER: ${OO_USER:-admin@uteq.edu.mx}
+      OO_PASSWORD: ${OO_PASSWORD:-Gestion2026!}
+      SECRET_KEY: ${SECRET_KEY:-cambie-esta-clave-en-el-servidor}
+      ADMIN_USUARIO: ${ADMIN_USUARIO:-admin}
+      ADMIN_CLAVE: ${ADMIN_CLAVE:-Admin123!}
+      ADMIN_CORREO: ${ADMIN_CORREO:-admin@uteq.edu.mx}
+      DATABASE_PATH: /data/usuarios.db
+      ENTORNO: ${ENTORNO:-produccion}
+      FORZAR_FALLO: ${FORZAR_FALLO:-0}
+    ports:
+      - "8080:8080"
+    volumes:
+      - app-data:/data
+
+  agente:
+    profiles: ["servidor"]
+    build: .
+    container_name: gestion-agente
+    restart: unless-stopped
+    depends_on:
+      - openobserve
+    command: ["python", "-m", "observabilidad.agente_host"]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://openobserve:5080/api/default
+      OTEL_SERVICE_NAME: agente-host
+      OO_USER: ${OO_USER:-admin@uteq.edu.mx}
+      OO_PASSWORD: ${OO_PASSWORD:-Gestion2026!}
+      HOST_PROC: /host/proc
+      HOST_SYS: /host/sys
+      ENTORNO: produccion
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+
+volumes:
+  oo-data:
+  app-data:

@@ -1,0 +1,86 @@
+name: CI/CD parcial 2
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: parcial2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pruebas:
+    name: Playwright frontend y backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Ejecutar la suite
+        run: pytest
+
+  registrar:
+    name: Registrar resultado en OpenObserve
+    runs-on: ubuntu-latest
+    needs: pruebas
+    if: always() && needs.pruebas.result != 'cancelled'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Enviar evento del pipeline
+        env:
+          OPENOBSERVE_URL: ${{ secrets.OPENOBSERVE_URL }}
+          OPENOBSERVE_ORG: ${{ secrets.OPENOBSERVE_ORG }}
+          OO_USER: ${{ secrets.OO_USER }}
+          OO_PASSWORD: ${{ secrets.OO_PASSWORD }}
+        run: python observabilidad/publicar_evento.py --tipo pruebas --estado ${{ needs.pruebas.result }}
+
+  desplegar:
+    name: Desplegar en EC2
+    runs-on: ubuntu-latest
+    needs: [pruebas, registrar]
+    if: needs.pruebas.result == 'success' && needs.registrar.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Actualizar contenedores por SSH
+        id: ssh
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          command_timeout: 20m
+          script: |
+            set -eu
+            cd /opt/gestion-usuarios
+            git fetch origin
+            git reset --hard origin/main
+            bash deploy/actualizar.sh
+      - name: Registrar despliegue exitoso
+        if: steps.ssh.outcome == 'success'
+        env:
+          OPENOBSERVE_URL: ${{ secrets.OPENOBSERVE_URL }}
+          OPENOBSERVE_ORG: ${{ secrets.OPENOBSERVE_ORG }}
+          OO_USER: ${{ secrets.OO_USER }}
+          OO_PASSWORD: ${{ secrets.OO_PASSWORD }}
+        run: python observabilidad/publicar_evento.py --tipo despliegue --estado exito
+      - name: Registrar despliegue fallido
+        if: steps.ssh.outcome == 'failure'
+        env:
+          OPENOBSERVE_URL: ${{ secrets.OPENOBSERVE_URL }}
+          OPENOBSERVE_ORG: ${{ secrets.OPENOBSERVE_ORG }}
+          OO_USER: ${{ secrets.OO_USER }}
+          OO_PASSWORD: ${{ secrets.OO_PASSWORD }}
+        run: python observabilidad/publicar_evento.py --tipo despliegue --estado fallo
