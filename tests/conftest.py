@@ -17,10 +17,11 @@ PUERTO = 8765
 CLAVE_ADMIN = "Admin123!"
 INICIO = time.time()
 RESULTADOS = []
-os.environ.setdefault(
-    "PLAYWRIGHT_BROWSERS_PATH",
-    str(Path.home() / "AppData" / "Local" / "ms-playwright"),
-)
+if sys.platform == "win32":
+    os.environ.setdefault(
+        "PLAYWRIGHT_BROWSERS_PATH",
+        str(Path.home() / "AppData" / "Local" / "ms-playwright"),
+    )
 
 
 def _libre(puerto):
