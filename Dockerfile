@@ -5,6 +5,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY observabilidad ./observabilidad
+COPY fallo_intencional ./fallo_intencional
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8080

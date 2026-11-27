@@ -214,7 +214,7 @@ def construir(datos):
     parrafo(doc, "2. Requerimientos y criterios de aceptación", 16, True, False, "izquierda", antes=12, despues=8)
     parrafo(doc, "La especificación pide seis requerimientos. La tabla siguiente dice dónde quedó cada uno en el repositorio.")
     filas_rf = [
-        ("RF-01", "Pruebas de frontend y backend con Playwright", "tests/test_ui.py y tests/test_api.py"),
+        ("RF-01", "Backend con pytest y frontend con Playwright", "reporte-pytest.html y reporte-playwright.html"),
         ("RF-02", "Despliegue solo si la suite pasa", ".github/workflows/cicd.yml, job desplegar"),
         ("RF-03", "Resultado de pruebas y de despliegue en OpenObserve", "observabilidad/publicar_evento.py"),
         ("RF-04", "Logs, métricas y trazas OTLP de la aplicación", "app/telemetria.py y app/main.py"),
@@ -231,14 +231,15 @@ def construir(datos):
         texto_celda(fila.cells[0], rf, tamano=10, negrita=True)
         texto_celda(fila.cells[1], texto, tamano=10)
         texto_celda(fila.cells[2], lugar, tamano=10)
-    parrafo(doc, "Criterio 1. Un commit con FORZAR_FALLO=1 hace que /salud responda 503 y que la pantalla muestre el texto «fallo intencional». Las pruebas de API y de interfaz esperan el estado operativo, así que Playwright falla. El job registrar envía el incidente a OpenObserve y el job desplegar no arranca: no hay conexión SSH.", antes=10)
-    parrafo(doc, "Criterio 2. Un commit válido deja la suite en verde. El workflow actualiza los contenedores con deploy/actualizar.sh y después publica el evento de despliegue completado.")
-    parrafo(doc, "Criterio 3. En OpenObserve conviven el stream cicd (ejecuciones del pipeline), las trazas de cada petición HTTP y las series del agente: host_cpu_utilization, host_memory_utilization, host_network_receive_bytes_per_second y host_temperature_celsius. La temperatura solo tiene puntos cuando el sistema expone un sensor; en muchas EC2 el hipervisor no publica zonas térmicas y el agente deja constancia de esa ausencia sin inventar una lectura.")
+    parrafo(doc, "Criterio 1. Un commit que deja el archivo fallo_intencional en 1 hace que /salud responda 503 y que la pantalla muestre el texto «fallo intencional». Las pruebas de API y de interfaz esperan el estado operativo, así que Playwright falla. El job registrar envía el incidente a OpenObserve y el job desplegar no arranca: no hay conexión SSH.", antes=10)
+    parrafo(doc, "Criterio 2. Un commit válido, con fallo_intencional en 0, deja la suite en verde. El workflow actualiza los contenedores con deploy/actualizar.sh y después publica el evento de despliegue completado. Si el repositorio no tiene el secreto OPENOBSERVE_URL, el workflow usa la dirección de esta instancia y las credenciales de demostración de .env.example, para que el evento sí quede registrado.")
+    parrafo(doc, "Criterio 3. El tablero Operación CI/CD y servidor muestra a la vez el stream cicd, la tabla de trazas de cada petición y las gráficas de CPU, RAM, ancho de banda de entrada y salida, y temperatura. La alerta Pipeline-con-fallo se dispara cuando estado es fallo. En esta EC2 el archivo térmico del kernel vale -273.15 °C porque el hipervisor no tiene sensor; el agente publica esa lectura.")
 
     parrafo(doc, "3. Arquitectura", 16, True, False, "izquierda", antes=12, despues=8)
-    parrafo(doc, "La aplicación es un servicio FastAPI. La interfaz es una página con el formulario de acceso y la tabla de usuarios. La sesión viaja en una cookie firmada. Las contraseñas se guardan con PBKDF2-HMAC-SHA256 y la base es SQLite. Al arrancar, si no hay cuentas, se crea el administrador.")
+    parrafo(doc, "La aplicación es un servicio FastAPI empaquetado en la imagen python:3.12-slim. La interfaz es una página con el formulario de acceso y la tabla de usuarios. La sesión viaja en una cookie firmada. Las contraseñas se guardan con PBKDF2-HMAC-SHA256 y la base es SQLite. Al arrancar, si no hay cuentas, se crea el administrador.")
     parrafo(doc, "En la EC2, Docker Compose levanta tres servicios: OpenObserve en el puerto 5080, la aplicación en el 8080 y el agente de host con el perfil servidor. El agente lee /proc y /sys de la instancia. La aplicación y el agente exportan OTLP por HTTP hacia http://openobserve:5080/api/default, con autenticación básica. GitHub Actions no despliega la imagen por sí mismo: entra por SSH y reconstruye esa pila. El puerto 80 queda libre para otros trabajos de la misma instancia.")
-    parrafo(doc, "Las métricas de la aplicación son http_requests_total, http_errors_total y http_request_duration_seconds, con método, ruta, código de estado y marca de tiempo. Cada consulta SQLite abre un tramo de traza db.query. Los logs de login, alta, edición, baja y excepciones salen en JSON por el mismo exportador.")
+    parrafo(doc, "Las métricas de la aplicación son http_requests_total, http_errors_total y http_request_duration_seconds. Cada punto lleva el endpoint, el método (GET, POST, PUT o DELETE), el statusCode y el timestamp. Cada consulta SQLite abre un tramo de traza db.query. Los logs de login, alta, edición, baja y excepciones salen en JSON por el mismo exportador.")
+    parrafo(doc, "El tablero de OpenObserve junta esas series con el servidor: CPU, memoria RAM, ancho de banda y temperatura. La temperatura de esta EC2 llega como -273.15 °C porque el hipervisor no tiene sensor; el agente publica el valor que entrega el kernel y, además, host_temperature_available.")
 
     parrafo(doc, "4. Aplicación: login y CRUD", 16, True, False, "izquierda", antes=12, despues=8)
     parrafo(doc, "El administrador inicia sesión, lista usuarios, crea, edita y elimina. Una cuenta con rol usuario puede autenticarse y recibe 403 si intenta el CRUD. No se puede borrar la propia sesión ni dejar el sistema sin un administrador activo. La clave no sale en ninguna respuesta.")
@@ -257,8 +258,11 @@ def construir(datos):
         parrafo(doc, "Aún no hay capturas en evidencias. Ejecute pytest y vuelva a generar este documento.")
 
     parrafo(doc, "5. Pruebas automatizadas", 16, True, False, "izquierda", antes=12, despues=8)
+    parrafo(doc, "Hay dos reportes HTML, como se pidió en clase. evidencias/reporte-pytest.html es el backend: pytest-html lista cada comprobación de tests/test_700.py marcada como backend. Cada caso nombra un dato concreto: un usuario, un correo, un rol, una clave, un código HTTP o un mensaje exacto. evidencias/reporte-playwright.html es el frontend: cada fila de la tabla, cada formulario de edición y cada rechazo escrito en la pantalla. Las figuras de esta sección salen de la corrida de interfaz.")
     if pruebas:
-        parrafo(doc, f"La corrida local usó Python {datos.get('python', '')} y terminó con {correctas} pruebas correctas y {fallidas} fallidas, en {datos.get('duracion_s', 0)} segundos. El backend usa el cliente HTTP de Playwright contra el servidor real. El frontend usa Chromium. tests/test_fallo.py levanta otra instancia con el fallo intencional y comprueba el 503 y el texto de la pantalla; esa prueba debe pasar en la suite normal.")
+        de_api = sum(1 for caso in pruebas if "test_comprobacion_backend" in caso["nodo"])
+        de_pantalla = sum(1 for caso in pruebas if "test_comprobacion_frontend" in caso["nodo"])
+        parrafo(doc, f"La corrida local usó Python {datos.get('python', '')} y terminó con {correctas} pruebas correctas y {fallidas} fallidas, en {datos.get('duracion_s', 0)} segundos. De ese total, {de_api} son de backend y {de_pantalla} de frontend, más el flujo completo, la autorización y el fallo intencional. El backend habla con el servidor real. El frontend usa Chromium y revisa la tabla, el formulario de cada cuenta y los mensajes de rechazo. tests/test_fallo.py levanta otra instancia con FORZAR_FALLO=1 y comprueba el 503 y el texto de la pantalla; esa prueba debe pasar en la suite normal.")
         resumen = doc.add_table(rows=1, cols=4)
         ancho_tabla(resumen, [5200, 1620, 1620, 1640])
         bordes(resumen)
@@ -301,7 +305,7 @@ def construir(datos):
         parrafo(doc, f"La corrida dejó {fallidas} pruebas en fallo. Hay que corregirlas antes de entregar: un push a main con la suite en rojo no despliega, y además registra el incidente.")
     else:
         parrafo(doc, "Falta la evidencia de la suite. Regenere el reporte después de pytest.")
-    parrafo(doc, "La observabilidad queda lista para la revisión en clase cuando la EC2 esté en marcha: tablero de pipeline, trazas de las peticiones y gráficas de CPU, memoria, ancho de banda y temperatura. Si la instancia no expone sensor térmico, la gráfica de temperatura permanece vacía y el agente informa host_temperature_available en cero; CPU, RAM y red sí se publican.")
+    parrafo(doc, "La observabilidad de la instancia ya recibe logs, métricas y trazas. El tablero Operación CI/CD y servidor y la alerta Pipeline-con-fallo quedan definidos en observabilidad/tablero.json y se cargan con observabilidad/importar_tablero.py. La gráfica de temperatura muestra la lectura del kernel, -273.15 °C en esta EC2, y CPU, RAM y ancho de banda se publican de forma continua.")
 
     parrafo(doc, "9. Fuentes de información", 16, True, False, "izquierda", antes=12, despues=8)
     for texto in (

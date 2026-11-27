@@ -17,6 +17,10 @@ PUERTO = 8765
 CLAVE_ADMIN = "Admin123!"
 INICIO = time.time()
 RESULTADOS = []
+os.environ.setdefault(
+    "PLAYWRIGHT_BROWSERS_PATH",
+    str(Path.home() / "AppData" / "Local" / "ms-playwright"),
+)
 
 
 def _libre(puerto):
@@ -106,6 +110,8 @@ def pytest_runtest_logreport(report):
 
 
 def pytest_sessionfinish(session, exitstatus):
+    if os.environ.get("NO_RESUMEN") == "1":
+        return
     EVIDENCIAS.mkdir(parents=True, exist_ok=True)
     resumen = {
         "fecha": time.strftime("%d de noviembre de 2026"),

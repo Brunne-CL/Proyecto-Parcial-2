@@ -4,6 +4,7 @@ import logging
 import os
 import sqlite3
 import time
+from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -27,7 +28,7 @@ peticiones = medidor.create_counter(
 )
 errores = medidor.create_counter(
     "http_errors_total",
-    description="Peticiones HTTP con código 5xx",
+    description="Peticiones HTTP con código 4xx o 5xx",
 )
 latencia = medidor.create_histogram(
     "http_request_duration_seconds",
@@ -47,8 +48,17 @@ app.add_middleware(SessionMiddleware, secret_key=os.environ.get("SECRET_KEY", "d
 app.mount("/estaticos", StaticFiles(directory=ESTATICOS), name="estaticos")
 
 
+def _marca_activa(valor):
+    return str(valor or "").strip().lower() in {"1", "true", "si", "sí"}
+
+
 def fallo_forzado():
-    return os.environ.get("FORZAR_FALLO", "").strip().lower() in {"1", "true", "si", "sí"}
+    if _marca_activa(os.environ.get("FORZAR_FALLO")):
+        return True
+    ruta = Path(__file__).resolve().parent.parent / "fallo_intencional"
+    if ruta.exists() and _marca_activa(ruta.read_text(encoding="utf-8")):
+        return True
+    return False
 
 
 def registrar(evento, **campos):
@@ -70,11 +80,20 @@ class MetricasMiddleware(BaseHTTPMiddleware):
             "http.method": request.method,
             "http.route": camino,
             "http.status_code": respuesta.status_code,
+            "statusCode": respuesta.status_code,
         }
         peticiones.add(1, atributos)
         latencia.record(duracion, atributos)
-        if respuesta.status_code >= 500:
+        if respuesta.status_code >= 400:
             errores.add(1, atributos)
+        registrar(
+            "peticion",
+            metodo=request.method,
+            ruta=camino,
+            statusCode=respuesta.status_code,
+            latencia_s=round(duracion, 4),
+            timestamp=datetime.now(timezone.utc).isoformat(),
+        )
         return respuesta
 
 

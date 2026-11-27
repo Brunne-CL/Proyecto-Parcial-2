@@ -20,6 +20,7 @@ services:
       - openobserve
     environment:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://openobserve:5080/api/default
+      OTEL_EXPORTER_OTLP_TIMEOUT: "30000"
       OTEL_SERVICE_NAME: gestion-usuarios
       OO_USER: ${OO_USER:-admin@uteq.edu.mx}
       OO_PASSWORD: ${OO_PASSWORD:-Gestion2026!}
@@ -45,6 +46,7 @@ services:
     command: ["python", "-m", "observabilidad.agente_host"]
     environment:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://openobserve:5080/api/default
+      OTEL_EXPORTER_OTLP_TIMEOUT: "30000"
       OTEL_SERVICE_NAME: agente-host
       OO_USER: ${OO_USER:-admin@uteq.edu.mx}
       OO_PASSWORD: ${OO_PASSWORD:-Gestion2026!}

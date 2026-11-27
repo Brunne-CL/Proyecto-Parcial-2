@@ -32,8 +32,10 @@ def _conectar():
 def _consultar(sql, parametros=(), una=False):
     trazador = trace.get_tracer("gestion.datos")
     with trazador.start_as_current_span("db.query") as tramo:
+        texto = " ".join(sql.split())
         tramo.set_attribute("db.system.name", "sqlite")
-        tramo.set_attribute("db.query.text", " ".join(sql.split()))
+        tramo.set_attribute("db.operation.name", texto.split(" ", 1)[0].upper())
+        tramo.set_attribute("db.query.text", texto)
         with _candado:
             with _conectar() as conexion:
                 cursor = conexion.execute(sql, parametros)

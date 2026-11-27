@@ -11,9 +11,15 @@ from pathlib import Path
 
 
 def cargar_entorno():
-    ruta = Path(__file__).resolve().parent.parent / ".env"
-    if not ruta.exists():
-        return
+    base = Path(__file__).resolve().parent.parent
+    for nombre in (".env", ".env.example"):
+        ruta = base / nombre
+        if not ruta.exists():
+            continue
+        _leer_archivo(ruta)
+
+
+def _leer_archivo(ruta):
     for linea in ruta.read_text(encoding="utf-8").splitlines():
         limpia = linea.strip()
         if not limpia or limpia.startswith("#") or "=" not in limpia:
@@ -68,7 +74,7 @@ def main():
     except urllib.error.HTTPError as error:
         print(error.read().decode("utf-8", errors="replace"), file=sys.stderr)
         return 1
-    print(f"Evento {args.tipo}/{estado} registrado en OpenObserve.")
+    print(f"Evento {args.tipo}/{estado} registrado en {base} (org {organizacion}).")
     return 0
 
 

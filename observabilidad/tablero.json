@@ -1,6 +1,10 @@
 {
+  "version": 5,
+  "dashboardId": "operacion-cicd-servidor",
   "title": "Operación CI/CD y servidor",
-  "description": "Ejecuciones del pipeline, latencia HTTP y recursos de la instancia.",
+  "description": "Ejecuciones del pipeline, trazas HTTP, latencia, peticiones, errores y recursos de la EC2.",
+  "role": "",
+  "owner": "admin@uteq.edu.mx",
   "tabs": [
     {
       "tabId": "operacion",
@@ -10,94 +14,224 @@
           "id": "eventos",
           "type": "table",
           "title": "Ejecuciones del pipeline",
+          "description": "Resultado de pruebas y despliegues, con commit, rama y usuario.",
+          "config": {"show_legends": false},
           "queryType": "sql",
           "queries": [
             {
-              "query": "SELECT _timestamp, tipo, estado, commit, rama, usuario, mensaje FROM cicd ORDER BY _timestamp DESC",
-              "customQuery": true
+              "query": "SELECT _timestamp, tipo, estado, commit, rama, usuario, mensaje FROM \"cicd\"",
+              "customQuery": true,
+              "fields": {
+                "stream": "cicd",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": "", "limit": 50}
             }
           ],
-          "layout": {"x": 0, "y": 0, "w": 12, "h": 8, "i": "eventos"}
+          "layout": {"x": 0, "y": 0, "w": 24, "h": 8, "i": 1}
+        },
+        {
+          "id": "trazas",
+          "type": "table",
+          "title": "Trazas de peticiones",
+          "description": "Cada petición HTTP y cada consulta SQLite (db.query).",
+          "config": {"show_legends": false},
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp, service_name, operation_name, duration, trace_id, span_status FROM \"default\"",
+              "customQuery": true,
+              "fields": {
+                "stream": "default",
+                "stream_type": "traces",
+                "x": [],
+                "y": [],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": "", "limit": 50}
+            }
+          ],
+          "layout": {"x": 0, "y": 8, "w": 24, "h": 8, "i": 2}
         },
         {
           "id": "latencia",
           "type": "line",
           "title": "Latencia por endpoint",
-          "queryType": "sql",
+          "description": "Tiempo medio de respuesta en segundos.",
+          "config": {"show_legends": true, "legends_position": "bottom", "decimals": 4, "unit": "s"},
+          "queryType": "promql",
           "queries": [
             {
-              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS latencia, \"http.route\" AS ruta FROM \"http_request_duration_seconds\" GROUP BY x, ruta ORDER BY x",
-              "customQuery": true
+              "query": "sum by (http_route) (rate(http_request_duration_seconds_sum[2m])) / sum by (http_route) (rate(http_request_duration_seconds_count[2m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_request_duration_seconds_sum",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": "{{http_route}}"}
             }
           ],
-          "layout": {"x": 0, "y": 8, "w": 6, "h": 8, "i": "latencia"}
+          "layout": {"x": 0, "y": 16, "w": 12, "h": 8, "i": 3}
         },
         {
           "id": "peticiones",
           "type": "line",
-          "title": "Peticiones y errores HTTP",
-          "queryType": "sql",
+          "title": "Peticiones por segundo",
+          "description": "Volumen de peticiones por endpoint.",
+          "config": {"show_legends": true, "legends_position": "bottom", "decimals": 3},
+          "queryType": "promql",
           "queries": [
             {
-              "query": "SELECT histogram(_timestamp) AS x, sum(value) AS peticiones, \"http.status_code\" AS estado FROM \"http_requests_total\" GROUP BY x, estado ORDER BY x",
-              "customQuery": true
+              "query": "sum by (http_route) (rate(http_requests_total[1m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_requests_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": "{{http_route}}"}
             }
           ],
-          "layout": {"x": 6, "y": 8, "w": 6, "h": 8, "i": "peticiones"}
+          "layout": {"x": 12, "y": 16, "w": 12, "h": 8, "i": 4}
+        },
+        {
+          "id": "errores",
+          "type": "line",
+          "title": "Errores HTTP por segundo",
+          "description": "Tasa de respuestas 4xx y 5xx, con el statusCode.",
+          "config": {"show_legends": true, "legends_position": "bottom", "decimals": 3},
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum by (http_status_code, http_route) (rate(http_requests_total{http_status_code=~\"4..|5..\"}[1m]))",
+              "customQuery": true,
+              "fields": {
+                "stream": "http_requests_total",
+                "stream_type": "metrics",
+                "x": [],
+                "y": [],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": "{{http_route}} {{http_status_code}}"}
+            }
+          ],
+          "layout": {"x": 0, "y": 24, "w": 24, "h": 8, "i": 5}
         },
         {
           "id": "cpu",
           "type": "line",
           "title": "CPU",
+          "description": "Porcentaje de CPU de la instancia.",
+          "config": {"show_legends": true, "decimals": 1, "unit": "%"},
           "queryType": "sql",
           "queries": [
             {
-              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS cpu FROM \"host_cpu_utilization\" GROUP BY x ORDER BY x",
-              "customQuery": true
+              "query": "SELECT histogram(_timestamp) AS x_axis_1, avg(value) AS y_axis_1 FROM \"host_cpu_utilization\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_cpu_utilization",
+                "stream_type": "metrics",
+                "x": [{"label": "Tiempo", "alias": "x_axis_1", "column": "_timestamp"}],
+                "y": [{"label": "CPU", "alias": "y_axis_1", "column": "value", "aggregationFunction": "avg"}],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": ""}
             }
           ],
-          "layout": {"x": 0, "y": 16, "w": 6, "h": 8, "i": "cpu"}
+          "layout": {"x": 0, "y": 32, "w": 12, "h": 8, "i": 6}
         },
         {
           "id": "ram",
           "type": "line",
           "title": "Memoria RAM",
+          "description": "Porcentaje de RAM en uso.",
+          "config": {"show_legends": true, "decimals": 1, "unit": "%"},
           "queryType": "sql",
           "queries": [
             {
-              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS ram FROM \"host_memory_utilization\" GROUP BY x ORDER BY x",
-              "customQuery": true
+              "query": "SELECT histogram(_timestamp) AS x_axis_1, avg(value) AS y_axis_1 FROM \"host_memory_utilization\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_memory_utilization",
+                "stream_type": "metrics",
+                "x": [{"label": "Tiempo", "alias": "x_axis_1", "column": "_timestamp"}],
+                "y": [{"label": "RAM", "alias": "y_axis_1", "column": "value", "aggregationFunction": "avg"}],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": ""}
             }
           ],
-          "layout": {"x": 6, "y": 16, "w": 6, "h": 8, "i": "ram"}
+          "layout": {"x": 12, "y": 32, "w": 12, "h": 8, "i": 7}
         },
         {
           "id": "red",
           "type": "line",
           "title": "Ancho de banda",
+          "description": "Bytes por segundo de entrada y de salida.",
+          "config": {"show_legends": true, "decimals": 0, "unit": "By/s"},
           "queryType": "sql",
           "queries": [
             {
-              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS bytes_por_segundo FROM \"host_network_receive_bytes_per_second\" GROUP BY x ORDER BY x",
-              "customQuery": true
+              "query": "SELECT histogram(_timestamp) AS x_axis_1, avg(value) AS y_axis_1 FROM \"host_network_receive_bytes_per_second\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_network_receive_bytes_per_second",
+                "stream_type": "metrics",
+                "x": [{"label": "Tiempo", "alias": "x_axis_1", "column": "_timestamp"}],
+                "y": [{"label": "Entrada", "alias": "y_axis_1", "column": "value", "aggregationFunction": "avg"}],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": "entrada"}
+            },
+            {
+              "query": "SELECT histogram(_timestamp) AS x_axis_1, avg(value) AS y_axis_1 FROM \"host_network_transmit_bytes_per_second\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_network_transmit_bytes_per_second",
+                "stream_type": "metrics",
+                "x": [{"label": "Tiempo", "alias": "x_axis_1", "column": "_timestamp"}],
+                "y": [{"label": "Salida", "alias": "y_axis_1", "column": "value", "aggregationFunction": "avg"}],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": "salida"}
             }
           ],
-          "layout": {"x": 0, "y": 24, "w": 6, "h": 8, "i": "red"}
+          "layout": {"x": 0, "y": 40, "w": 12, "h": 8, "i": 8}
         },
         {
           "id": "temperatura",
           "type": "line",
           "title": "Temperatura",
+          "description": "Grados Celsius. En esta EC2 el hipervisor reporta -273.15 porque no hay sensor.",
+          "config": {"show_legends": true, "decimals": 2, "unit": "°C"},
           "queryType": "sql",
           "queries": [
             {
-              "query": "SELECT histogram(_timestamp) AS x, avg(value) AS celsius FROM \"host_temperature_celsius\" GROUP BY x ORDER BY x",
-              "customQuery": true
+              "query": "SELECT histogram(_timestamp) AS x_axis_1, avg(value) AS y_axis_1 FROM \"host_temperature_celsius\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "customQuery": true,
+              "fields": {
+                "stream": "host_temperature_celsius",
+                "stream_type": "metrics",
+                "x": [{"label": "Tiempo", "alias": "x_axis_1", "column": "_timestamp"}],
+                "y": [{"label": "Celsius", "alias": "y_axis_1", "column": "value", "aggregationFunction": "avg"}],
+                "filter": {"filterType": "group", "logicalOperator": "AND", "conditions": []}
+              },
+              "config": {"promql_legend": ""}
             }
           ],
-          "layout": {"x": 6, "y": 24, "w": 6, "h": 8, "i": "temperatura"}
+          "layout": {"x": 12, "y": 40, "w": 12, "h": 8, "i": 9}
         }
       ]
     }
-  ]
+  ],
+  "variables": {"list": [], "showDynamicFilters": false},
+  "defaultDatetimeDuration": {"type": "relative", "relativeTimePeriod": "6h"}
 }

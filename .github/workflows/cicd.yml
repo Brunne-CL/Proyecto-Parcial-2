@@ -41,7 +41,15 @@ jobs:
           OPENOBSERVE_ORG: ${{ secrets.OPENOBSERVE_ORG }}
           OO_USER: ${{ secrets.OO_USER }}
           OO_PASSWORD: ${{ secrets.OO_PASSWORD }}
-        run: python observabilidad/publicar_evento.py --tipo pruebas --estado ${{ needs.pruebas.result }}
+        run: |
+          if [ -z "$OO_USER" ] || [ -z "$OO_PASSWORD" ]; then
+            set -a
+            . ./.env.example
+            set +a
+          fi
+          export OPENOBSERVE_URL="http://54.227.162.119:5080"
+          export OPENOBSERVE_ORG="${OPENOBSERVE_ORG:-default}"
+          python observabilidad/publicar_evento.py --tipo pruebas --estado ${{ needs.pruebas.result }}
 
   desplegar:
     name: Desplegar en EC2
@@ -57,8 +65,8 @@ jobs:
         id: ssh
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          host: ${{ secrets.EC2_HOST || '54.227.162.119' }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script_stop: true
           command_timeout: 20m
@@ -75,7 +83,15 @@ jobs:
           OPENOBSERVE_ORG: ${{ secrets.OPENOBSERVE_ORG }}
           OO_USER: ${{ secrets.OO_USER }}
           OO_PASSWORD: ${{ secrets.OO_PASSWORD }}
-        run: python observabilidad/publicar_evento.py --tipo despliegue --estado exito
+        run: |
+          if [ -z "$OO_USER" ] || [ -z "$OO_PASSWORD" ]; then
+            set -a
+            . ./.env.example
+            set +a
+          fi
+          export OPENOBSERVE_URL="http://54.227.162.119:5080"
+          export OPENOBSERVE_ORG="${OPENOBSERVE_ORG:-default}"
+          python observabilidad/publicar_evento.py --tipo despliegue --estado exito
       - name: Registrar despliegue fallido
         if: steps.ssh.outcome == 'failure'
         env:
@@ -83,4 +99,12 @@ jobs:
           OPENOBSERVE_ORG: ${{ secrets.OPENOBSERVE_ORG }}
           OO_USER: ${{ secrets.OO_USER }}
           OO_PASSWORD: ${{ secrets.OO_PASSWORD }}
-        run: python observabilidad/publicar_evento.py --tipo despliegue --estado fallo
+        run: |
+          if [ -z "$OO_USER" ] || [ -z "$OO_PASSWORD" ]; then
+            set -a
+            . ./.env.example
+            set +a
+          fi
+          export OPENOBSERVE_URL="http://54.227.162.119:5080"
+          export OPENOBSERVE_ORG="${OPENOBSERVE_ORG:-default}"
+          python observabilidad/publicar_evento.py --tipo despliegue --estado fallo

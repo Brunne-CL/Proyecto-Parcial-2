@@ -69,7 +69,7 @@ En el repositorio: Settings, Secrets and variables, Actions.
 
 | Secret | Valor |
 | --- | --- |
-| `OPENOBSERVE_URL` | `http://IP-PUBLICA:5080` |
+| `OPENOBSERVE_URL` | `http://54.227.162.119:5080` |
 | `OPENOBSERVE_ORG` | `default` |
 | `OO_USER` | `admin@uteq.edu.mx` |
 | `OO_PASSWORD` | `Gestion2026!` |
@@ -78,6 +78,8 @@ En el repositorio: Settings, Secrets and variables, Actions.
 | `EC2_SSH_KEY` | Contenido del `.pem` |
 
 El security group necesita 22, 8080 y 5080. El puerto 5080 tiene que ser alcanzable desde GitHub Actions: el runner es quien avisa a OpenObserve cuando las pruebas fallan, y en ese caso no debe haber SSH.
+
+Si `OPENOBSERVE_URL` no está en los secrets, el workflow usa `http://54.227.162.119:5080` y el usuario de `.env.example`. `EC2_HOST`, `EC2_USER` y `EC2_SSH_KEY` sí tienen que estar: sin la llave el job de despliegue no puede abrir SSH.
 
 ## EC2, una vez
 
@@ -93,12 +95,6 @@ El puerto 80 de la misma instancia puede seguir usándolo el proyecto integrador
 
 ## Fallo intencional
 
-Para el criterio de aceptación que bloquea el despliegue, en un commit de prueba ponga `FORZAR_FALLO=1` en el entorno del servidor de pruebas. La forma directa en local es:
+Para el criterio de aceptación que bloquea el despliegue, cambie el archivo `fallo_intencional` de `0` a `1` y haga commit. `/salud` responde 503 y la pantalla muestra «fallo intencional». La suite principal exige el estado operativo, así que Playwright falla, el workflow registra el incidente y no abre SSH. `tests/test_fallo.py` sigue pasando: comprueba ese 503 en un servidor aparte.
 
-```powershell
-$env:FORZAR_FALLO = "1"
-```
-
-`/salud` responde 503 y la pantalla muestra «fallo intencional». `tests/test_ui.py` y `tests/test_api.py` exigen el estado operativo, así que el workflow falla, registra el incidente y no ejecuta el job de SSH. `tests/test_fallo.py` comprueba que ese modo responde 503; ese caso sí debe pasar en la suite normal.
-
-Quite la variable antes del commit que sí debe desplegarse.
+Vuelva a dejar `fallo_intencional` en `0` antes del commit que sí debe desplegarse. En local también puede forzar el modo con `$env:FORZAR_FALLO = "1"`.
