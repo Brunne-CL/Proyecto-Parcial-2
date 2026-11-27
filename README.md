@@ -59,7 +59,7 @@ Eso crea el stream `cicd`, intenta cargar `observabilidad/tablero.json` y una al
 
 ## Qué hace el pipeline
 
-1. En cada push o pull request genera dos reportes HTML en Ubuntu: `reporte-pytest` con `tests/test_api.py` y `reporte-playwright` con la interfaz. Un tercer job corre `tests/test_alpine.py` dentro de `python:3.12-alpine` y genera `reporte-alpine`.
+1. En cada push o pull request genera dos reportes HTML en Ubuntu: `reporte-pytest` con las 700 comprobaciones concretas de backend y `reporte-playwright` con las 700 de la interfaz (`tests/test_700.py`). Un tercer job corre `tests/test_alpine.py` dentro de `python:3.12-alpine` y genera `reporte-alpine`.
 2. Los tres HTML quedan como artefactos de esa ejecución. En la página del workflow, al final, está la sección Artifacts.
 3. Publica en OpenObserve el resultado (éxito o fallo), con commit, rama y usuario. Si OpenObserve no recibe el evento, el job falla.
 4. Solo si pytest, Playwright, Alpine y el registro salieron bien, y el push es a `main`, abre SSH a la EC2, reconstruye los contenedores y registra el despliegue. Un fallo no llega al paso SSH.

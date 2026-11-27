@@ -25,9 +25,9 @@ jobs:
       - name: Generar reportes pytest y Playwright
         run: |
           set +e
-          pytest tests/test_api.py --html=evidencias/reporte-pytest.html --self-contained-html
+          pytest -m backend tests/test_700.py --html=evidencias/reporte-pytest.html --self-contained-html
           codigo_pytest=$?
-          pytest tests/test_ui.py tests/test_fallo.py --html=evidencias/reporte-playwright.html --self-contained-html
+          pytest -m frontend tests/test_700.py --html=evidencias/reporte-playwright.html --self-contained-html
           codigo_playwright=$?
           if [ "$codigo_pytest" -ne 0 ] || [ "$codigo_playwright" -ne 0 ]; then
             exit 1
