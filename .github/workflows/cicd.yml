@@ -22,14 +22,58 @@ jobs:
         run: |
           pip install -r requirements-dev.txt
           python -m playwright install --with-deps chromium
-      - name: Ejecutar la suite
-        run: pytest
+      - name: Generar reportes pytest y Playwright
+        run: |
+          set +e
+          pytest tests/test_api.py --html=evidencias/reporte-pytest.html --self-contained-html
+          codigo_pytest=$?
+          pytest tests/test_ui.py tests/test_fallo.py --html=evidencias/reporte-playwright.html --self-contained-html
+          codigo_playwright=$?
+          if [ "$codigo_pytest" -ne 0 ] || [ "$codigo_playwright" -ne 0 ]; then
+            exit 1
+          fi
+      - name: Publicar reporte pytest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-pytest
+          path: evidencias/reporte-pytest.html
+          if-no-files-found: warn
+      - name: Publicar reporte Playwright
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-playwright
+          path: |
+            evidencias/reporte-playwright.html
+            evidencias/*.png
+          if-no-files-found: warn
+
+  reporte-alpine:
+    name: Reporte Alpine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generar reporte pytest en Alpine
+        run: |
+          docker run --rm -v "$PWD":/app -w /app python:3.12-alpine sh -c '
+            apk add --no-cache gcc musl-dev libffi-dev
+            pip install --no-cache-dir -r requirements.txt pytest pytest-html
+            pytest -o addopts= tests/test_alpine.py --html=evidencias/reporte-alpine.html --self-contained-html
+          '
+      - name: Publicar reporte Alpine
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reporte-alpine
+          path: evidencias/reporte-alpine.html
+          if-no-files-found: warn
 
   registrar:
     name: Registrar resultado en OpenObserve
     runs-on: ubuntu-latest
-    needs: pruebas
-    if: always() && needs.pruebas.result != 'cancelled'
+    needs: [pruebas, reporte-alpine]
+    if: always() && needs.pruebas.result != 'cancelled' && needs.reporte-alpine.result != 'cancelled'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -49,13 +93,13 @@ jobs:
           fi
           export OPENOBSERVE_URL="http://54.227.162.119:5080"
           export OPENOBSERVE_ORG="${OPENOBSERVE_ORG:-default}"
-          python observabilidad/publicar_evento.py --tipo pruebas --estado ${{ needs.pruebas.result }}
+          python observabilidad/publicar_evento.py --tipo pruebas --estado ${{ (needs.pruebas.result == 'success' && needs.reporte-alpine.result == 'success') && 'success' || 'failure' }}
 
   desplegar:
     name: Desplegar en EC2
     runs-on: ubuntu-latest
-    needs: [pruebas, registrar]
-    if: needs.pruebas.result == 'success' && needs.registrar.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [pruebas, reporte-alpine, registrar]
+    if: needs.pruebas.result == 'success' && needs.reporte-alpine.result == 'success' && needs.registrar.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

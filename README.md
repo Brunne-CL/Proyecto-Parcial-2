@@ -59,9 +59,10 @@ Eso crea el stream `cicd`, intenta cargar `observabilidad/tablero.json` y una al
 
 ## Qué hace el pipeline
 
-1. En cada push o pull request corre Playwright: la API (`tests/test_api.py`) y la pantalla (`tests/test_ui.py`).
-2. Publica en OpenObserve el resultado (éxito o fallo), con commit, rama y usuario. Si OpenObserve no recibe el evento, el job falla.
-3. Solo si las pruebas y el registro salieron bien, y el push es a `main`, abre SSH a la EC2, reconstruye los contenedores y registra el despliegue. Un fallo de Playwright no llega al paso SSH.
+1. En cada push o pull request genera dos reportes HTML en Ubuntu: `reporte-pytest` con `tests/test_api.py` y `reporte-playwright` con la interfaz. Un tercer job corre `tests/test_alpine.py` dentro de `python:3.12-alpine` y genera `reporte-alpine`.
+2. Los tres HTML quedan como artefactos de esa ejecución. En la página del workflow, al final, está la sección Artifacts.
+3. Publica en OpenObserve el resultado (éxito o fallo), con commit, rama y usuario. Si OpenObserve no recibe el evento, el job falla.
+4. Solo si pytest, Playwright, Alpine y el registro salieron bien, y el push es a `main`, abre SSH a la EC2, reconstruye los contenedores y registra el despliegue. Un fallo no llega al paso SSH.
 
 ### Secrets
 
